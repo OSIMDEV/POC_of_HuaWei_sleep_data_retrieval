@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">HuaWeiHealthKit</string>
+    <string name="start_time">Start time</string>
+    <string name="load_data">Load Data</string>
+    <string name="end_time">End time</string>
+
+    <string name="main_page_title">POC of Sleep Data</string>
+    <string name="presentation_page_title">Sleep Data Presentation</string>
+</resources>

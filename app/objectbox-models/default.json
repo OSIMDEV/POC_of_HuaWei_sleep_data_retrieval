@@ -1,0 +1,79 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:5511573735784742139",
+      "lastPropertyId": "10:5229369721037030954",
+      "name": "SleepRecord",
+      "properties": [
+        {
+          "id": "1:2402782786977666492",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7546971217927420639",
+          "name": "type",
+          "type": 5
+        },
+        {
+          "id": "3:5110095937352548480",
+          "name": "startDate",
+          "indexId": "1:5092262408013966606",
+          "type": 6,
+          "flags": 32808
+        },
+        {
+          "id": "4:7920243545909365717",
+          "name": "endDate",
+          "type": 6
+        },
+        {
+          "id": "5:5894706632767302725",
+          "name": "metaData",
+          "type": 9
+        },
+        {
+          "id": "6:3092563582252490172",
+          "name": "deviceModel",
+          "type": 9
+        },
+        {
+          "id": "7:3537222491452572307",
+          "name": "deviceName",
+          "type": 9
+        },
+        {
+          "id": "8:542174132416218689",
+          "name": "deviceType",
+          "type": 9
+        },
+        {
+          "id": "9:4905339628548821030",
+          "name": "deviceUniqueCode",
+          "type": 9
+        },
+        {
+          "id": "10:5229369721037030954",
+          "name": "updateTime",
+          "type": 6
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "1:5511573735784742139",
+  "lastIndexId": "1:5092262408013966606",
+  "lastRelationId": "0:0",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}
