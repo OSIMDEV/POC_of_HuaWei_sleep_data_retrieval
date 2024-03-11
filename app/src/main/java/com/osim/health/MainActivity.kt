@@ -80,7 +80,6 @@ class MainActivity : BaseActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val showProgress = remember { vm.showProgress }.value
                     Box {
                         Scaffold (
                             topBar = {
@@ -97,7 +96,7 @@ class MainActivity : BaseActivity() {
                                 }
                             }
                         )
-                        if (showProgress) Process()
+                        if (vm.showProgress) Process()
                     }
                 }
             }
@@ -129,8 +128,6 @@ class MainActivity : BaseActivity() {
 
     @Composable
     fun Content() {
-        var startDate by remember { vm.startDate }
-        var endDate by remember { vm.endDate }
         var which by remember { mutableStateOf(false) }
         var showDatePicker by remember { mutableStateOf(false) }
         Column(
@@ -146,7 +143,7 @@ class MainActivity : BaseActivity() {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = formattedDate(getString(R.string.start_time), startDate, separator = " : "),
+                    text = formattedDate(getString(R.string.start_time), vm.startDate, separator = " : "),
                     fontSize = 12.sp,
                     modifier = Modifier.clickable {
                         which = true
@@ -154,7 +151,7 @@ class MainActivity : BaseActivity() {
                     }
                 )
                 Text(
-                    text = formattedDate(getString(R.string.end_time), endDate, separator = " : "),
+                    text = formattedDate(getString(R.string.end_time), vm.endDate, separator = " : "),
                     fontSize = 12.sp,
                     modifier = Modifier.clickable {
                         which = false
@@ -183,7 +180,7 @@ class MainActivity : BaseActivity() {
                         ItemInfo(
                             title = "Get Sleep Records",
                             cb = {
-                                getSleepRecord(startDate, endDate)
+                                getSleepRecord(vm.startDate, vm.endDate)
                             },
                         ),
                     ),
@@ -201,12 +198,12 @@ class MainActivity : BaseActivity() {
                 onDismissRequest = { showDatePicker = false },
                 onDateChange = { date ->
                     if (which) {
-                        startDate = date2TimeZero(localDate2Long(date))
+                        vm.startDate = date2TimeZero(localDate2Long(date))
                     } else {
-                        endDate = date2TimeZero(localDate2Long(date))
+                        vm.endDate = date2TimeZero(localDate2Long(date))
                     }
                     showDatePicker = false
-                    showToast(this@MainActivity, "${formattedDate("", startDate)} ~ ${formattedDate("", endDate)}")
+                    showToast(this@MainActivity, "${formattedDate("", vm.startDate)} ~ ${formattedDate("", vm.endDate)}")
                 },
                 title = { Text(text = "Select date") },
             )
@@ -214,41 +211,41 @@ class MainActivity : BaseActivity() {
     }
 
     private fun reqAuth() {
-        vm.showProgress.value = true
+        vm.showProgress = true
         huaWeiHealthKitHelper.requestAuth(this@MainActivity) {
             showToast(
                 this@MainActivity,
                 if (it) "Authorized" else "Unauthorized",
             )
-            vm.showProgress.value = false
+            vm.showProgress = false
         }
     }
 
     private fun checkAuth() {
-        vm.showProgress.value = true
+        vm.showProgress = true
         huaWeiHealthKitHelper.checkAuth(this@MainActivity) {
             showToast(
                 this@MainActivity,
                 if (it) "Authorized" else "Unauthorized",
             )
-            vm.showProgress.value = false
+            vm.showProgress = false
         }
     }
 
     private fun cancelAuth() {
-        vm.showProgress.value = true
+        vm.showProgress = true
         huaWeiHealthKitHelper.cancelAuth(this@MainActivity) {
             showToast(
                 this@MainActivity,
                 "Unauthorized",
             )
-            vm.showProgress.value = false
+            vm.showProgress = false
         }
     }
 
     private fun getSleepRecord(startDate: Long, endDate: Long) {
         // 查询科学睡眠详情
-        vm.showProgress.value = true
+        vm.showProgress = true
         val timeout = TimeUnit.MINUTES.toMillis(3).toInt()
         huaWeiHealthKitHelper.getSleepRecord(this@MainActivity, startDate, endDate, timeout) { data, errInfo ->
             data?.apply {
@@ -259,7 +256,7 @@ class MainActivity : BaseActivity() {
             } ?: run {
                 showToast(this@MainActivity.applicationContext, errInfo)
             }
-            vm.showProgress.value = false
+            vm.showProgress = false
         }
     }
 
@@ -269,8 +266,8 @@ class MainActivity : BaseActivity() {
 
     private fun navToDataPage() {
         val params = Bundle()
-        params.putLong("startDate", date2TimeZero(vm.startDate.longValue))
-        params.putLong("endDate", date2TimeZero(vm.endDate.longValue))
+        params.putLong("startDate", date2TimeZero(vm.startDate))
+        params.putLong("endDate", date2TimeZero(vm.endDate))
         navTo(this, DataPageActivity::class.java, params)
     }
 }

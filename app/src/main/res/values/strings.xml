@@ -6,4 +6,5 @@
 
     <string name="main_page_title">POC of Sleep Data</string>
     <string name="presentation_page_title">Sleep Data Presentation</string>
+    <string name="score_title">Score:</string>
 </resources>

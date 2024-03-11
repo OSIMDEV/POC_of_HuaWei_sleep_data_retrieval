@@ -3,6 +3,9 @@ package com.osim.health
 import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.Message
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
@@ -19,9 +22,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.twotone.Favorite
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,13 +46,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.marosseleng.compose.material3.datetimepickers.date.ui.dialog.DatePickerDialog
 import com.osim.health.components.SleepCard
+import com.osim.health.components.SleepScoreBoard
 import com.osim.health.model.SleepRecord
 import com.osim.health.ui.theme.HuaWeiHealthKitTheme
 import com.osim.health.viewmodel.DataPageViewModel
 import com.osim.health.utils.date2TimeZero
+import com.osim.health.utils.dateRange
 import com.osim.health.utils.formattedDate
 import com.osim.health.utils.localDate2Long
 import com.osim.health.utils.showToast
+import java.util.concurrent.TimeUnit
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @RequiresApi(Build.VERSION_CODES.O)
@@ -56,16 +64,20 @@ class DataPageActivity : BaseActivity() {
 
     companion object {
         const val TAG = "DataPageActivity"
+        const val MSG_SHOW_NAV_BAR = 1000
     }
 
     private val vm: DataPageViewModel by viewModels()
 
+    private lateinit var h: H
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        h = H(vm)
         intent.extras?.getBundle("params")?.apply {
             val now = System.currentTimeMillis()
-            vm.startDate.longValue = getLong("startDate", now)
-            vm.endDate.longValue = getLong("endDate", now)
+            vm.startDate = getLong("startDate", now)
+            vm.endDate = getLong("endDate", now)
         }
         setContent {
             HuaWeiHealthKitTheme {
@@ -85,7 +97,16 @@ class DataPageActivity : BaseActivity() {
                             ) {
                                 Content()
                             }
-                        }
+                        },
+                        bottomBar = {
+                            if (vm.showSleepScore) {
+                                NavigationBar (
+                                    containerColor = Color.White
+                                ) {
+                                    SleepScoreBoard(vm.selectedDate, vm.sleepRecordsForScoring)
+                                }
+                            }
+                        },
                     )
                 }
             }
@@ -120,16 +141,25 @@ class DataPageActivity : BaseActivity() {
                     }
                 )
             )
-        }
+        },
+        actions = {
+            Icon(
+                Icons.TwoTone.Favorite,
+                contentDescription = null,
+                tint = if (vm.showSleepScore) Color.Red else Color.Gray,
+                modifier = Modifier.clickable(
+                    onClick = {
+                        vm.showDatePicker = !vm.showDatePicker
+                        vm.whichUseOfDatePicker = "selected"
+                    }
+                )
+            )
+        },
     )
 
     @Composable
     fun Content() = Column {
-        var startDate by remember { vm.startDate }
-        var endDate by remember { vm.endDate }
-        var which by remember { mutableStateOf(false) }
-        var showDatePicker by remember { mutableStateOf(false) }
-        val stateSleepRecords = remember { mutableStateOf(emptyList<SleepRecord>()) }
+        var stateSleepRecords by remember { mutableStateOf(emptyList<SleepRecord>()) }
         Column(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -149,40 +179,39 @@ class DataPageActivity : BaseActivity() {
                     Text(
                         text = formattedDate(
                             getString(R.string.start_time),
-                            startDate,
+                            vm.startDate,
                             separator = " : "
                         ),
                         fontSize = 12.sp,
                         modifier = Modifier.clickable {
-                            which = true
-                            showDatePicker = true
+                            vm.whichUseOfDatePicker = "start"
+                            vm.showDatePicker = true
                         }
                     )
                     Text(
-                        text = formattedDate(getString(R.string.end_time), endDate, separator = " : "),
+                        text = formattedDate(getString(R.string.end_time), vm.endDate, separator = " : "),
                         fontSize = 12.sp,
                         modifier = Modifier.clickable {
-                            which = false
-                            showDatePicker = true
+                            vm.whichUseOfDatePicker = "end"
+                            vm.showDatePicker = true
                         }
                     )
                 }
             }
         }
-        loadData(startDate = startDate, endDate = endDate) {sleepRecords ->
-            stateSleepRecords.value = sleepRecords.toList()
+        loadData(startDate = vm.startDate, endDate = vm.endDate) {sleepRecords ->
+            stateSleepRecords = sleepRecords.toList()
         }
-        if (stateSleepRecords.value.isNotEmpty()) {
+        if (stateSleepRecords.isNotEmpty()) {
             Spacer(modifier = Modifier.padding(8.dp))
             LazyColumn (
                 modifier = Modifier
                     .padding(8.dp)
                     .fillMaxSize(),
             ) {
-                val sleepRecords = stateSleepRecords.value
-                itemsIndexed(sleepRecords) {index, item ->
+                itemsIndexed(stateSleepRecords) {index, item ->
                     SleepCard(sleepRecord = item)
-                    if (index + 1 != sleepRecords.size) {
+                    if (index + 1 != stateSleepRecords.size) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -192,28 +221,58 @@ class DataPageActivity : BaseActivity() {
                 }
             }
         }
-        if (showDatePicker) {
+        if (vm.showDatePicker) {
             DatePickerDialog(
-                onDismissRequest = { showDatePicker = false },
+                onDismissRequest = { vm.showDatePicker = false },
                 onDateChange = { date ->
-                    if (which) {
-                        startDate = date2TimeZero(localDate2Long(date))
-                    } else {
-                        endDate = date2TimeZero(localDate2Long(date))
+                    val curSelectedDate = date2TimeZero(localDate2Long(date))
+                    when (vm.whichUseOfDatePicker) {
+                        "start" -> {
+                            vm.startDate = curSelectedDate
+                            vm.showDatePickToast = true
+                        }
+                        "end" -> {
+                            vm.endDate = curSelectedDate
+                            vm.showDatePickToast = true
+                        }
+                        else -> {
+                            vm.selectedDate = curSelectedDate
+                            val (startDate, endDate) = curSelectedDate.dateRange()
+                            loadData(startDate = startDate, endDate = endDate, true) {
+                                vm.showSleepScore = true
+                                h.removeMessages(MSG_SHOW_NAV_BAR)
+                                h.sendEmptyMessageDelayed(MSG_SHOW_NAV_BAR, TimeUnit.SECONDS.toMillis(3L))
+                            }
+                            vm.showDatePickToast = false
+                        }
                     }
-                    showDatePicker = false
-                    showToast(this@DataPageActivity, "${formattedDate("", startDate)} ~ ${formattedDate("", endDate)}")
+                    vm.showDatePicker = false
+                    if (vm. showDatePickToast) {
+                        showToast(this@DataPageActivity, "${formattedDate("", vm.startDate)} ~ ${formattedDate("", vm.endDate)}")
+                    }
                 },
                 title = { Text(text = "Select date") },
             )
         }
     }
 
-    private fun loadData(startDate: Long, endDate: Long, cb: (List<SleepRecord>)->Unit) {
+    private fun loadData(startDate: Long, endDate: Long, score: Boolean = false, cb: (List<SleepRecord>)->Unit) {
         vm.getSleepRecords(startDate = startDate, endDate = endDate).observe(
             this@DataPageActivity,
         ) { sleepRecords ->
-           cb(sleepRecords.toList())
+            val sRecordsVm = if (score) vm.sleepRecordsForScoring else vm.sleepRecords
+            sRecordsVm.clear()
+            sRecordsVm.addAll(sleepRecords.toList())
+            cb(sRecordsVm)
+        }
+    }
+
+    private class H(private val vm: DataPageViewModel) : Handler(Looper.getMainLooper()) {
+
+        override fun handleMessage(msg: Message) {
+            when (msg.what) {
+                MSG_SHOW_NAV_BAR -> vm.showSleepScore = false
+            }
         }
     }
 }
